@@ -28,8 +28,9 @@ need to be lossless--they just need to be deterministic. Let's also recall
 associated with a decoder is an "encoder", which we also mean in the broadest
 terms.
 
-![1](https://user-images.githubusercontent.com/4319522/67609900-413c4980-f75d-11e9-8d3b-97cbd50d754b.png)
-
+<p align="center">
+  <img width="400"  src="https://user-images.githubusercontent.com/4319522/67609900-413c4980-f75d-11e9-8d3b-97cbd50d754b.png">
+</p>
 
 For example, when passing arguments through a [shell](#posix-shell) to a
 target program, the user needs to take various steps to ensure the string
@@ -109,10 +110,21 @@ two modes described.
 
 Below we show of the "quoting" encoder in practice.
 
-![2](https://user-images.githubusercontent.com/4319522/67609901-41d4e000-f75d-11e9-860d-91090ce58e49.png)
-![3](https://user-images.githubusercontent.com/4319522/67609902-41d4e000-f75d-11e9-8757-bb73d166d788.png)
-![4](https://user-images.githubusercontent.com/4319522/67609903-41d4e000-f75d-11e9-82dd-0760c2e51f3e.png)
-![5](https://user-images.githubusercontent.com/4319522/67609904-41d4e000-f75d-11e9-84e8-f81fbb3a86b8.png)
+<p align="center">
+  <img width="400"  src="https://user-images.githubusercontent.com/4319522/67610208-34205a00-f75f-11e9-9ea1-efd6fa115300.png">
+</p>
+
+<p align="center">
+  <img width="400"  src="https://user-images.githubusercontent.com/4319522/67610209-34205a00-f75f-11e9-86ca-e954ee9aa28a.png">
+</p>
+
+<p align="center">
+  <img width="400"  src="https://user-images.githubusercontent.com/4319522/67610210-34b8f080-f75f-11e9-8dd6-15bbc4c340dc.png">
+</p>
+
+<p align="center">
+  <img width="400"  src="https://user-images.githubusercontent.com/4319522/67610206-34205a00-f75f-11e9-8892-bbde2d46b602.png">
+</p>
 
 
 
