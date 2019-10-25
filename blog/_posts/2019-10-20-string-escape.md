@@ -24,7 +24,12 @@ the list of decoders between the source and destination, and working backwards.
 Subsequently, I'm going to just use the term "decoder" as the broadest class of
 transformation. Note that while this could mean encryption, it also applies to
 any other textual transform, including parsers and compressors. They don't even
-need to be lossless--they just need to be deterministic.
+need to be lossless--they just need to be deterministic. Let's also recall
+associated with a decoder is an "encoder", which we also mean in the broadest
+terms.
+
+![1](https://user-images.githubusercontent.com/4319522/67609900-413c4980-f75d-11e9-8d3b-97cbd50d754b.png)
+
 
 For example, when passing arguments through a [shell](#posix-shell) to a
 target program, the user needs to take various steps to ensure the string
@@ -58,6 +63,58 @@ I feel it's important to note before jumping in that there are many possible
 encodings which all will yield the same output. The purpose here is generally
 to pick the strategy that will yield the most reasonable output with the fewest
 rules.
+
+## What is exactly quoting or why can't I pass arguments with spaces properly
+
+Before delving into more details. It's instructive to look at a concrete example
+of a component the escaping pipeline. We're going to look at "quoting" in a
+shell. This is an is an example of a specific encoder, which notoriously the
+source for many problems. Part of the issue stems for its terrible name
+"quoting", which mistakenly confuses its function with the presence of quotes in
+a string literal.
+
+Quoting is the mechanism used to delineate arguments to a function in a shell.
+We know in normal code or in math, we can call a function with specific
+arguments by the notation `foo(a,b,c)`. A shell needs to be interactive, and
+this would be too cumbersome in daily usage, so we have invented the concept of
+"quoting" to simplify this notation, so we can instead write `foo a b c` to pass
+the same arguments to the function `foo`, where we note that spaces have the
+special meaning to separate the individual arguments. In general, this leads to
+a user friendly experience, except when we need to perform more complex actions
+with, say, paths that have spaces, since now `foo /A/my folder`, would pass two
+arguments `A/my` and `folder` instead of `/A/my folder` to the function `foo`.
+Most of the times this isn't an issue and we simply "quote" the string, which
+allows us us to pass spaces, but this mistakenly attributes the presence of
+quotes with the separation of arguments, which not true. For example the
+argument to `foo` in `foo "a b c"`, is encoded exactly the same as `"a "b" c"`,
+or for that matter `a" "b" "c`. What's going on here?
+
+Part of the problem is if we for example try to read
+https://docs.microsoft.com/en-us/previous-versions//17w5ykft(v=vs.85)?redirectedfrom=MSDN
+we are lead to believe we can simply scan a string for balanced pairs of
+double-quoted strings to identify individual arguments. This is not the way to
+understand quoting, because it falsely identifies double-quotes with separating
+arguments, which is **not** the case. The rule becomes *vastly* simpler if we
+understand that the presence of a quote in string triggers two modes, the first
+being (1) "interpret special chars" mode and (2) "ignore special chars". Upon
+entering each mode the `"` used to trigger the mode we are entering is ignored
+and hen further processing is continued. When we enter mode 1, spaces are
+interpreted literally and after we exit we're in mode 2, where spaces now are
+not special and delineate arguments. The simple rule is to scan from
+*left-to-right* a command line and when we encounter a double-quote `"` we enter
+mode (1) and discard the `"` and when we encounter another double-quote we enter
+mode (2) and discard `"`. It's not easy to understand where the concept of
+unbalanced double-quotes, doesn't exist. The quotes simply trigger one of the
+two modes described.
+
+Below we show of the "quoting" encoder in practice.
+
+![2](https://user-images.githubusercontent.com/4319522/67609901-41d4e000-f75d-11e9-860d-91090ce58e49.png)
+![3](https://user-images.githubusercontent.com/4319522/67609902-41d4e000-f75d-11e9-8757-bb73d166d788.png)
+![4](https://user-images.githubusercontent.com/4319522/67609903-41d4e000-f75d-11e9-82dd-0760c2e51f3e.png)
+![5](https://user-images.githubusercontent.com/4319522/67609904-41d4e000-f75d-11e9-84e8-f81fbb3a86b8.png)
+
+
 
 # Strategy
 {:.no_toc}
@@ -262,10 +319,11 @@ On Windows, the situation is a bit different from on Unix. When transitioning
 between these systems, it's important to be aware of this, because it impacts
 how some of the stages in the pipeline operate.
 
-In particular, the command line arrives at the target application as a single
-string, and is then responsible for interpreting it. Unlike with `posix`, each
-program is expected to implement their own shell and glob capabilities (if
-relevant), since this interface means that the shell cannot do it.
+In particular, the command line arrives at the target application as a *single
+string*, and then target applicant is responsible for interpreting it. This is
+very different than in a `posix` shell. Each program on Windows is expected to
+implement their own shell and glob capabilities (if relevant), since this
+interface means that the shell cannot do it.
 
 So unlike in Unix, where we observe that the shell does significant
 preprocessing of the input and turns the command input into a list of arguments
@@ -281,16 +339,16 @@ But it doesn't get used by every program (notable exceptions include
 
 This uses the same format as Julia "raw" strings described before:
 
-> All quotation marks must be escaped, and any backslashes that precede them.
-Only when a sequence of backslashes precedes a quote character. Thus, 2n
-backslashes followed by a quote encodes n backslashes and the end of the literal
-while 2n+1 backslashes followed by a quote encodes n backslashes followed by a
-quote character. Anywhere else, each n backslashes simply encodes for n
-backslashes.
+> All quotation marks must be escaped and any backslashes that precede them. In
+all other instances, backslashes are not special, and do not need escaping.
+Thus, 2n backslashes followed by a quote encodes n backslashes and the end of
+the literal, while 2n+1 backslashes followed by a quote encodes n backslashes
+followed by a quote character. Anywhere else, each n backslashes simply encodes
+for n backslashes.
+
+{Add example?}
 
 todo: See also resources
-
-### Adanced (test)
 
 ## .Net
 
