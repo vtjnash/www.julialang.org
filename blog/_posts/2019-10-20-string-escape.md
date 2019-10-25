@@ -97,14 +97,15 @@ double-quoted strings to identify individual arguments. This is not the way to
 understand quoting, because it falsely identifies double-quotes with separating
 arguments, which is **not** the case. The rule becomes *vastly* simpler if we
 understand that the presence of a quote in string triggers two modes, the first
-being (1) "interpret special chars" mode and (2) "ignore special chars". Upon
-entering each mode the `"` used to trigger the mode we are entering is ignored
-and hen further processing is continued. When we enter mode 1, spaces are
-interpreted literally and after we exit we're in mode 2, where spaces now are
-not special and delineate arguments. The simple rule is to scan from
-*left-to-right* a command line and when we encounter a double-quote `"` we enter
-mode (1) and discard the `"` and when we encounter another double-quote we enter
-mode (2) and discard `"`. It's not easy to understand where the concept of
+being (1) "interpret special chars" mode and (2) "ignore special chars" mode.
+Upon entering each mode the `"` used to trigger the mode we are entering is
+ignored and then further processing is continued. When we enter mode 1, spaces
+are interpreted literally and after we exit mode 1, spaces are now not special
+and are used to delineate arguments. The simple rule is to scan the command line
+from *left-to-right* and when we encounter a double-quote `"` we enter mode 1
+and discard the `"` and when we encounter another double-quote we exit mode 1
+and discard `"`, after which we are in the "ignore special chars" mode where a
+space separates arguments. It's not easy to understand where the concept of
 unbalanced double-quotes, doesn't exist. The quotes simply trigger one of the
 two modes described.
 
