@@ -90,7 +90,7 @@ quotes with the separation of arguments, which not true. For example the
 argument to `foo` in `foo "a b c"`, is encoded exactly the same as `"a "b" c"`,
 or for that matter `a" "b" "c`. What's going on here?
 
-Part of the problem is if we for example try to read
+Part of the problem is if we try to read
 https://docs.microsoft.com/en-us/previous-versions//17w5ykft(v=vs.85)?redirectedfrom=MSDN
 we are lead to believe we can simply scan a string for balanced pairs of
 double-quoted strings to identify individual arguments. This is not the way to
@@ -98,16 +98,16 @@ understand quoting, because it falsely identifies double-quotes with separating
 arguments, which is **not** the case. The rule becomes *vastly* simpler if we
 understand that the presence of a quote in string triggers two modes, the first
 being (1) "interpret special chars" mode and (2) "ignore special chars" mode.
-Upon entering each mode the `"` used to trigger the mode we are entering is
-ignored and then further processing is continued. When we enter mode 1, spaces
-are interpreted literally and after we exit mode 1, spaces are now not special
-and are used to delineate arguments. The simple rule is to scan the command line
-from *left-to-right* and when we encounter a double-quote `"` we enter mode 1
-and discard the `"` and when we encounter another double-quote we exit mode 1
-and discard `"`, after which we are in the "ignore special chars" mode where a
-space separates arguments. It's not easy to understand where the concept of
-unbalanced double-quotes, doesn't exist. The quotes simply trigger one of the
-two modes described.
+Double quotes `"` are used to trigger the mode we are entering and after
+encounter `"` it is ignored and further processing is continued. When we enter
+mode 1, spaces are interpreted literally and after we exit mode 1, spaces are
+now not special and are used to delineate arguments. The simple rule is to scan
+the command line from *left-to-right* and when we encounter a double-quote `"`
+we enter mode 1 and discard the `"` and when we encounter another double-quote
+we exit mode 1 and discard `"`, after which we are in the "ignore special chars"
+mode, where a space separates arguments and is not special. It's not easy to
+understand where the concept of unbalanced double-quotes, doesn't exist. The
+quotes simply trigger one of the two modes described.
 
 Below we show of the "quoting" encoder in practice.
 
