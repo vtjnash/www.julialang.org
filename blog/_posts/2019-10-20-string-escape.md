@@ -98,16 +98,15 @@ understand quoting, because it falsely identifies double-quotes with separating
 arguments, which is **not** the case. The rule becomes *vastly* simpler if we
 understand that the presence of a quote in string triggers two modes, the first
 being (1) "interpret special chars" mode and (2) "ignore special chars" mode.
-Double quotes `"` are used to trigger the mode we are entering and after
+Double quotes `"` are used to trigger the mode we are entering and after we
 encounter `"` it is ignored and further processing is continued. When we enter
 mode 1, spaces are interpreted literally and after we exit mode 1, spaces are
-now not special and are used to delineate arguments. The simple rule is to scan
+not special and are used to delineate arguments. The simple rule is then to scan
 the command line from *left-to-right* and when we encounter a double-quote `"`
-we enter mode 1 and discard the `"` and when we encounter another double-quote
-we exit mode 1 and discard `"`, after which we are in the "ignore special chars"
-mode, where a space separates arguments and is not special. It's not easy to
-understand where the concept of unbalanced double-quotes, doesn't exist. The
-quotes simply trigger one of the two modes described.
+we discard the `"` and enter mode 1 and and when we encounter another
+double-quote `"` we discard it and exit mode 1, entering mode 2 where we "ignore
+special chars" (here a space separates arguments and is not special). Quite
+simply the concept of unbalanced double-quotes does not exist. Quotes simply trigger one of two modes.
 
 Below we show of the "quoting" encoder in practice.
 
