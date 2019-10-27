@@ -154,7 +154,6 @@ Below we show of the "quoting" encoder in practice.
 </p>
 
 
-
 # Strategy
 {:.no_toc}
 
