@@ -19,3 +19,5 @@ _includes/benchmarks.svg:
 clean:
 	rm benchmarks.csv _includes/benchmarks.html _includes/benchmarks.svg
 
+.rb:
+	gem install -i $@ bundler

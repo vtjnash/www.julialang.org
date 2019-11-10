@@ -274,12 +274,24 @@ only does some initial preprocessing to identify line breaks.
 
 ## CommandLineToArgv
 
-This function is responsible for turning the command line string into a list of
-arguments suitable for passing to the `main` function of a C program.
-But it doesn't get used by every program (notable exceptions include
-[`.Net`](#net) and [`Cmd`](#cmd-not-dos)).
+Adding to the complication on Windows, there is not one standard decoder, but
+at least three. Unfortunately, also none of them implement what they document,
+despite (or because) the documentation for what they should do is very simple,
+clear, and precise.
 
-This uses the same format as Julia "raw" strings described before:
+Fortunately, for our purposes, we only need to know how to avoid triggering any
+of the surprise behaviors. And for that, knowing just the simple rules is
+generally sufficient.
+
+For your edification, though, I'll tell of the more common quirks you may
+encounter. They are:
+ - "Standard" Windows programs (DOS commands)
+ - Mingw-w64 programs and `CommandLineToArgv`
+ - MSVC and .Net programs
+ - User-supplied
+
+First, the documentation uses the same format as Julia "raw" strings described
+before[^win1]:
 
 > All quotation marks must be escaped, and any backslashes that precede them.
 Only when a sequence of backslashes precedes a quote character. Thus, 2n
@@ -288,14 +300,41 @@ while 2n+1 backslashes followed by a quote encodes n backslashes followed by a
 quote character. Anywhere else, each n backslashes simply encodes for n
 backslashes.
 
-todo: See also resources
+That means that this: `app "a""b c"` should be expected to be interpreted as
+the single argument `ab c`.
 
-## .Net
+The `CommandLineToArgv` adds an undocumented additional rule that a
+double-quote immediately before a closing double-quote is preserved
+(but the second double-quote still closes the string).
 
-todo: I don't know what this really does, but here's what the documentation
-says:
+That means that this: `app "a""b c"` gets interpreted as the argument pair
+`a"b` and `c`.
 
-https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.processstartinfo.arguments?view=netframework-4.8#System_Diagnostics_ProcessStartInfo_Arguments
+Most other programs (including the MSVC parser and .Net parser) appears to use
+an almost similar rule to that, although their implementations are separate and
+their behaviors are undocumented, so I can't say for certain if they are
+exactly the same. Unfortunately, this shortcoming then seems to have crept into
+the documentation and implementation of spawning new processes from .Net, again
+describing an almost similar rule to what actually exists[^win2]. The rule
+these programs use is that any pair of double-quotes inside a double-quoted
+string encode for a single double-quote.
+
+That means that this: `app "a""b c"` is interpreted as the single argument `a"b c`.
+
+What do all these have in common? They all have the four special characters
+`"`, `\\`, space, and tab. But you can also write your own: in fact, there's
+even one alternate one provided by default that adds some additional special
+characters[^win3]. We're going to ignore that one, however, since the
+documentation is very limited, and on initial testing, it appears to be
+incapable of being used for our purposes as it fails to implement any sort of
+escape sequence.
+
+todo: Algo for escaping
+todo: "See-also" resources
+
+[win1^]: {https://docs.microsoft.com/en-us/cpp/cpp/parsing-cpp-command-line-arguments}
+[win2^]: {https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.processstartinfo.argumentlist?view=netcore-3.0}
+[win3^]: {https://docs.microsoft.com/en-us/cpp/cpp/customizing-cpp-command-line-processing}
 
 ## Cmd (not DOS)
 
