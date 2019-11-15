@@ -109,10 +109,10 @@ General encoding of Unicode strings, such as for embedding into a C program
 file, is implemented in the [`Base.escape_string`] function. This is implemented
 as follows:
 
-Backslashes and quotes (`\\` and `"`) are escaped with a backslash (`\\\\` and
-`\\"`). Non-printable characters are escaped either with their standard C escape
-codes, `"\\0"` for NUL (if unambiguous), unicode code point (`"\\u"` prefix) or
-hex (`"\\x"` prefix).
+Backslashes and quotes (`\` and `"`) are escaped with a backslash (`\\` and
+`\"`). Non-printable characters are escaped either with their standard C escape
+codes, `"\0"` for NUL (if unambiguous), unicode code point (`"\u"` prefix) or
+hex (`"\x"` prefix).
 
 ## Julia string
 
@@ -120,7 +120,7 @@ hex (`"\\x"` prefix).
 
 Encoding Julia strings can be done by calling the [`repr`] function. This is
 similar to other [Unicode string](#c-string), but also escapes the `$` character
-with a backslack (`\\$`).
+with a backslack (`\$`).
 
 ## Julia "raw" strings
 
@@ -168,7 +168,7 @@ are actually more than 3 distinct cases here that must be handled.
    `hhhh` is the hex value. Ref JavaScript [`Element.setAttribute`].
  * JavaScript (JSON, JSONP): This can use same handling as [C
    string](#c-string), excluding malformed characters which would typically use
-   the `\\xhhhh` form. As described above, is sufficient to only escape `\\` and
+   the `\xhhhh` form. As described above, is sufficient to only escape `\` and
    `"` plus any control codes (characters below 0x20).
 
 # Base64
@@ -185,10 +185,10 @@ this, so I will not go into further detail.
 
 There are many special characters in regular expressions. One strategy would be
 to enumerate all of these ("[({})]+.\*?\\" etc.) and escape them with a
-backslash. An alternate strategy is to wrap the verbatim string in `\\Q`
-(quoted) ... `\\E` (end). That only leaves one character pairing to escape,
-`\\E`, for which the escape sequence is the replacement string is the five
-characters `\\E\QE`.
+backslash. An alternate strategy is to wrap the verbatim string in `\Q`
+(quoted) ... `\E` (end). That only leaves one character pairing to escape,
+`\E`, for which the escape sequence is the replacement string is the six
+character sequence `\\E\QE`.
 
 # Unix derivatives
 
@@ -249,12 +249,12 @@ necessary to consider carefully[^1] these nuances.
    should put a `--` in the argument list, to first terminate option parsing
    before giving the user argument. For example, `rm -- $filename`.
 
-[^1] In fact, if there is a concern of adversarial input, it may be better to
-entirely avoid passing the data to the external program in this way, since it
-can be hard to realize all of the edge cases. Instead, you may want to consider
-[Base64 encoding](#base64), passing the value in a [side channel](#out-of-band)
-such as `stdin`, or using the builtin features of the current language instead
-of a posix tool.
+[^1]: In fact, if there is a concern of adversarial input, it may be better to
+    entirely avoid passing the data to the external program in this way, since
+    it can be hard to realize all of the edge cases. Instead, you may want to
+    consider [Base64 encoding](#base64), passing the value in a [side
+    channel](#out-of-band) such as `stdin`, or using the builtin features of
+    the current language instead of a posix tool.
 
 # Windows
 
@@ -285,13 +285,13 @@ generally sufficient.
 
 For your edification, though, I'll tell of the more common quirks you may
 encounter. They are:
- - "Standard" Windows programs (DOS commands)
+ - "Standard" Windows programs (such as DOS commands)
  - Mingw-w64 programs and `CommandLineToArgv`
  - MSVC and .Net programs
  - User-supplied
 
-First, the documentation uses the same format as Julia "raw" strings described
-before[^win1]:
+Firstly, the documentation uses the same format as [Julia "raw"
+strings](#julia-raw-strings) described before[^win1]:
 
 > All quotation marks must be escaped, and any backslashes that precede them.
 Only when a sequence of backslashes precedes a quote character. Thus, 2n
@@ -316,30 +316,76 @@ their behaviors are undocumented, so I can't say for certain if they are
 exactly the same. Unfortunately, this shortcoming then seems to have crept into
 the documentation and implementation of spawning new processes from .Net, again
 describing an almost similar rule to what actually exists[^win2]. The rule
-these programs use is that any pair of double-quotes inside a double-quoted
-string encode for a single double-quote.
+these programs appear to use is that any pair of double-quotes inside a
+double-quoted string also encode for a single double-quote.
 
 That means that this: `app "a""b c"` is interpreted as the single argument `a"b c`.
 
 What do all these have in common? They all have the four special characters
-`"`, `\\`, space, and tab. But you can also write your own: in fact, there's
+`"`, `\`, space, and tab. But you can also write your own: in fact, there's
 even one alternate one provided by default that adds some additional special
-characters[^win3]. We're going to ignore that one, however, since the
-documentation is very limited, and on initial testing, it appears to be
+characters to implement filename globbing[^win3]. We're going to ignore that
+one, however, since the documentation is very limited (it just says to go read
+the documentation for specifics), and on initial testing, it appears to be
 incapable of being used for our purposes as it fails to implement any sort of
 escape sequence.
 
-todo: Algo for escaping
-todo: "See-also" resources
+So our final algorithm to avoid all of that is fairly straightforward, if not
+precisely simple. This can also be found in various other online resources such
+as the Microsoft blog[^win4]. And we've already seen it in
+[before](#julia-raw-strings). In brief[^win5]:
 
-[win1^]: {https://docs.microsoft.com/en-us/cpp/cpp/parsing-cpp-command-line-arguments}
-[win2^]: {https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.processstartinfo.argumentlist?view=netcore-3.0}
-[win3^]: {https://docs.microsoft.com/en-us/cpp/cpp/customizing-cpp-command-line-processing}
+  1. Double all `\` characters leading up to a `"` or the end of the string.
+  2. Replace all `"` characters with `\"`.
+
+[^win1]: <https://docs.microsoft.com/en-us/cpp/cpp/parsing-cpp-command-line-arguments>
+[^win2]: <https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.processstartinfo.argumentlist?view=netcore-3.0>
+[^win3]: <https://docs.microsoft.com/en-us/cpp/cpp/customizing-cpp-command-line-processing>
+[^win4]: <https://blogs.msdn.microsoft.com/twistylittlepassagesallalike/2011/04/23/everyone-quotes-command-line-arguments-the-wrong-way>
+[^win5]: Actually, there's one more quirk in argument parsing which is that
+    sometimes the first argument gets parsed with a yet different set of rules.
+    This is justified on the basis that the OS isn't expected to be able to
+    deal with filenames containing special characters (such as `"` or a
+    terminating `\`), and the first argument is conventionally the path used to
+    launch the program.  Some of those considerations are mentioned talked
+    about more in the MSDN documentation for [CreateProcessW](), although we
+    can't do anything about it here. Anyways, forget I mentioned it.
+[CreateProcessW]: https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessw
 
 ## Cmd (not DOS)
 
-This one is actually quite simple, but won't fit into you mental model at all if
-you try to understand this like it is a posix shell.
+This one is actually quite simple, but won't fit into you mental model at all
+if you try to understand this like it is a posix shell. This is greatly
+exacerbated by the tendency of many online resources to talk about this in
+terms of the posix model with "arguments" and "splitting." But Cmd doesn't have
+any concept of either of those. This means it actually has quite a simple
+escaping algorithm. A true DOS prompt would be more primitive than this, but
+hardly ever is seen in practice now, so I didn't spend time researching it.
+
+Each character that might be special must be preceded by the escape character
+`^`. The list of special characters is `%`, `!`, `^`, `\`, `"`, `<`, `>`, `&`, and
+`|`. (many lists get this wrong, and either miss some or list others like `?`
+that are meta characters of a different "program", such as `find` or `for`).
+
+It's also valid to prefix every character with `^`, but typically more
+cumbersome.
+
+## Batch files
+
+Batch files are similar to Cmd, but has a few surprises of it's own.
+
+First is that the special characters are the same as Cmd, but
+you uses `%%` instead of `^%` to write a literal `%`
+character. (`^%%` is also valid, but not `^%^%`)
+All other special characters are preceded by `^`, like before.
+
+Also the argument parser for batch files is very limited and can hold some nasty surprises for arbitrary input.
+
+  - The argument list (%1 to %9) is split on white space (spaces, tabs, and newlines).
+  - Wrap an arguments in `"`'s to keep it as one argument, including white spaces.
+  - The quotes will be preserved in the argument.
+  - There's no escape character (no way to write an unbalanced `"`).
+  - A use of an argument that ends in `^` inside the script will _quote_ the next character (newline, space, etc.) in the script, potentially completely alternating the meaning of that command and the next one.
 
 ## Powershell and pwsh
 
@@ -359,5 +405,3 @@ you try to understand this like it is a posix shell.
 
 
 ---
-
-[^1]: footnote
