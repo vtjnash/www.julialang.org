@@ -24,12 +24,21 @@ the list of decoders between the source and destination, and working backwards.
 Subsequently, I'm going to just use the term "decoder" as the broadest class of
 transformation. Note that while this could mean encryption, it also applies to
 any other textual transform, including parsers and compressors. They don't even
-need to be lossless--they just need to be deterministic.
+need to be lossless--they just need to be deterministic. Let's also recall
+associated with a decoder is an "encoder", which we also mean in the broadest
+terms.
 
 For example, when passing arguments through a [shell](#posix-shell) to a
 target program, the user needs to take various steps to ensure the string
 arrives intact, and that the shell doesn't get confused by the presence of an
 unexpected meta-character.
+
+Below is an example of an escaping pipeline. Here the encoder that takes an
+argument string and parses it into an argument array. The decoder performs the
+inverse operation.
+<p align="center">
+  <img width="500"  src="https://user-images.githubusercontent.com/4319522/67609900-413c4980-f75d-11e9-8d3b-97cbd50d754b.png">
+</p>
 
 As explained in a much earlier post titled [Put This In Your Pipe], Julia tries
 to help you avoid this by avoiding passing the data through the shell.
@@ -59,8 +68,99 @@ encodings which all will yield the same output. The purpose here is generally
 to pick the strategy that will yield the most reasonable output with the fewest
 rules.
 
+## What is exactly quoting or why can't I pass arguments with spaces properly
+
+---
+
+Random notes:
+
+
+Quoting: serves tell the parser to stop or restart interpreting whitespace as an argument separator
+Escaping:  how do you insert a literal double quote character without toggling the parser state
+
+Escaping: (1) Operates one character at a time and temporarily relieves you from the normal processing flow ('escape' normal processing flow). (2)
+Allows you to insert a literal double quote character without toggling the parser state.
+
+At least 3 command line parsers: (1) parse cmdline  (called automatically at
+program startup to generate argv[]) by runtime initalization. (2)
+CommandLineToArgvW   called explicitly by the programmer.  (3) cmd.exe
+
+---
+
+
+Before delving into more details. It's instructive to look at a concrete example
+of a component the escaping pipeline. We're going to look at "quoting" in a
+shell. This is an is an example of a specific encoder, which is notoriously the
+source for many problems. Part of the issue stems for its terrible name
+"quoting", which mistakenly confuses its function with the presence of quotes in
+a string literal. In any case we're going to look at how `CommandLineToArgvW` functions.
+
+Quoting is the mechanism used to delineate arguments to a function, typically in
+a shell environment. We know in normal code or in math, we can call a function
+with specific arguments by the notation `foo(a,b,c)`. A shell needs to be
+interactive, and this would be too cumbersome in daily usage. Therefore, we have
+invented the concept of "quoting" to simplify this notation, so we can instead
+write `foo a b c` to pass the same arguments to the function `foo`, where we
+note that spaces have the special meaning to separate the individual arguments.
+In general, this leads to a user friendly experience, except when we need to
+perform more complex actions with, say, paths that have spaces, since now `ls
+/A/my music`, would pass two arguments `A/my` and `music` instead of `/A/my
+ music` to the function `ls`. Most of the times this isn't an issue and we
+simply "quote" the string, which allows us to pass spaces in a string argument,
+but this mistakenly attributes the presence of quotes with the separation of
+arguments, which not true. For example the argument to `foo` in `foo "a b c"`,
+is encoded exactly the same as `"a "b" c"`, or for that matter `a" "b" "c`.
+What's going on here?
+
+Part of the problem is if we try to read
+https://docs.microsoft.com/en-us/previous-versions//17w5ykft(v=vs.85)?redirectedfrom=MSDN
+we are lead to believe we can simply scan a string for balanced pairs of
+double-quoted strings to identify individual arguments. This is not the way to
+understand quoting, because it falsely identifies double-quotes with separating
+arguments, which is **not** the case. The rule becomes *vastly* simpler if we
+understand that the presence of a quote in string triggers two modes, the first
+being (1) "interpret special chars" and (2) "ignore special chars". Double
+quotes `"` are used to trigger the mode to enter/exit and after we encounter `"`
+it is ignored and further processing is continued. When we enter mode 1, spaces
+are interpreted literally and after we exit mode 1, spaces are not special and
+are used to delineate arguments. The simple rule is then to scan the command
+line from *left-to-right* and when we encounter a double-quote `"` we discard
+the `"` and enter mode 1 and when we encounter another double-quote `"` we
+discard it and exit mode 1, entering mode 2 where we "ignore special chars"
+(here a space separates arguments and is not special). Quite simply the concept
+of unbalanced double-quotes does not exist. Quotes simply trigger one of two
+modes.
+
+Below we show of the "quoting" encoder in practice.
+
+### Example 1
+<p align="center">
+  <img width="500"  src="https://user-images.githubusercontent.com/4319522/67610208-34205a00-f75f-11e9-9ea1-efd6fa115300.png">
+</p>
+
+### Example 2
+<p align="center">
+  <img width="500"  src="https://user-images.githubusercontent.com/4319522/67610209-34205a00-f75f-11e9-86ca-e954ee9aa28a.png">
+</p>
+
+### Example 3
+<p align="center">
+  <img width="500"  src="https://user-images.githubusercontent.com/4319522/67610210-34b8f080-f75f-11e9-8dd6-15bbc4c340dc.png">
+</p>
+
+### Example 4
+<p align="center">
+  <img width="500"  src="https://user-images.githubusercontent.com/4319522/67610206-34205a00-f75f-11e9-8892-bbde2d46b602.png">
+</p>
+
+
 # Strategy
 {:.no_toc}
+
+--
+A concrete example is needed here, since I don't understand how this strategy
+actually works.
+--
 
 Now let's lay out our strategy. Remember that when I use the term "decoder", it
 applies to any sort of transform to the input data.
@@ -262,10 +362,11 @@ On Windows, the situation is a bit different from on Unix. When transitioning
 between these systems, it's important to be aware of this, because it impacts
 how some of the stages in the pipeline operate.
 
-In particular, the command line arrives at the target application as a single
-string, and is then responsible for interpreting it. Unlike with `posix`, each
-program is expected to implement their own shell and glob capabilities (if
-relevant), since this interface means that the shell cannot do it.
+In particular, the command line arrives at the target application as a *single
+string*, and then target applicant is responsible for interpreting it. This is
+very different than in a `posix` shell. Each program on Windows is expected to
+implement their own shell and glob capabilities (if relevant), since this
+interface means that the shell cannot do it.
 
 So unlike in Unix, where we observe that the shell does significant
 preprocessing of the input and turns the command input into a list of arguments
@@ -293,12 +394,14 @@ encounter. They are:
 Firstly, the documentation uses the same format as [Julia "raw"
 strings](#julia-raw-strings) described before[^win1]:
 
-> All quotation marks must be escaped, and any backslashes that precede them.
-Only when a sequence of backslashes precedes a quote character. Thus, 2n
-backslashes followed by a quote encodes n backslashes and the end of the literal
-while 2n+1 backslashes followed by a quote encodes n backslashes followed by a
-quote character. Anywhere else, each n backslashes simply encodes for n
-backslashes.
+> All quotation marks must be escaped and any backslashes that precede them. In
+all other instances, backslashes are not special, and do not need escaping.
+Thus, 2n backslashes followed by a quote encodes n backslashes and the end of
+the literal, while 2n+1 backslashes followed by a quote encodes n backslashes
+followed by a quote character. Anywhere else, each n backslashes simply encodes
+for n backslashes.
+
+{Add example?}
 
 That means that this: `app "a""b c"` should be expected to be interpreted as
 the single argument `ab c`.
